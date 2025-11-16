@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.conf import settings
+from django.core.cache import cache
 import urllib.request
 import urllib.error
 import json
@@ -8,6 +9,17 @@ import json
 
 # Create your views here.
 def weather_api(request, city):
+    # Cache
+    cache_key = f"weather:{city.lower()}"
+    cached_data = cache.get(cache_key)
+
+    if cached_data:
+        print(f"Data for {city} retrieved from cache")
+        return JsonResponse(cached_data, json_dumps_params={"ensure_ascii": False})
+
+    ## if not found in cache, get it from the API
+    print(f"Data for {city} NOT found in cache. Fetching from API.")
+
     # API key
     api_key = settings.VISUAL_WEATHER_API_KEY
 
@@ -54,7 +66,14 @@ def weather_api(request, city):
                 "temp_max": current_day.get("tempmax"),
                 "temp_min": current_day.get("tempmin"),
                 "conditions": current_day.get("description"),
+                "source": "api_fresh",  # to see it's a fresh copy
             }
+
+            cache.set(
+                cache_key,
+                formatted_response,
+                timeout=12 * 60 * 60,  # save for 12 hours
+            )
 
             return JsonResponse(
                 formatted_response, json_dumps_params={"ensure_ascii": False}
