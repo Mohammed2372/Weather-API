@@ -2,12 +2,15 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.conf import settings
 from django.core.cache import cache
+from ratelimit.decorators import ratelimit
+
 import urllib.request
 import urllib.error
 import json
 
 
 # Create your views here.
+@ratelimit(key="ip", rate="5/m", block=True)
 def weather_api(request, city):
     # Cache
     cache_key = f"weather:{city.lower()}"
@@ -101,11 +104,3 @@ def weather_api(request, city):
             {"error": error_msg},
             status=503,  # 503 Service Unavailable
         )
-
-    # data = {
-    #     "city": city,
-    #     "temperature": 15,
-    #     "unit": "celsius",
-    #     "description": "Mostly cloudy",
-    #     "api_source": "local_stub (Step 1)",
-    # }
