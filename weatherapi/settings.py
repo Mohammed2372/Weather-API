@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # API key
-VISUAL_CROSSING_API_KEY = os.environ.get("VISUAL_CROSSING_API_KEY")
+VISUAL_WEATHER_API_KEY = os.environ.get("VISUAL_CROSSING_API_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
