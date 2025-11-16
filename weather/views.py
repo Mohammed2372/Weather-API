@@ -1,8 +1,7 @@
-from django.shortcuts import render
 from django.http import JsonResponse
 from django.conf import settings
 from django.core.cache import cache
-from ratelimit.decorators import ratelimit
+from django_ratelimit.decorators import ratelimit
 
 import urllib.request
 import urllib.error
@@ -10,7 +9,7 @@ import json
 
 
 # Create your views here.
-@ratelimit(key="ip", rate="5/m", block=True)
+@ratelimit(key="ip", rate="10/m", block=True)
 def weather_api(request, city):
     # Cache
     cache_key = f"weather:{city.lower()}"
