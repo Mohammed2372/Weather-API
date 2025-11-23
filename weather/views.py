@@ -1,3 +1,4 @@
+from django.shortcuts import render
 from django.http import JsonResponse
 from django.conf import settings
 from django.core.cache import cache
@@ -8,9 +9,12 @@ import urllib.error
 import json
 
 
-# Create your views here.
-@ratelimit(key="ip", rate="10/m", block=True)
+@ratelimit(key="ip", rate="5/m", block=False)
 def weather_api(request, city):
+    if getattr(request, "limited", False):
+        return JsonResponse(
+            {"error": "Rate limit exceeded. Please wait a moment"}, status=429
+        )
     # Cache
     cache_key = f"weather:{city.lower()}"
     cached_data = cache.get(cache_key)
@@ -62,12 +66,27 @@ def weather_api(request, city):
                 )
 
             current_day = weather_data["days"][0]
+            # get the next 5 days
+            forecast_list = []
+            next_days = weather_data["days"][1:6]
+
+            for day in next_days:
+                forecast_list.append(
+                    {
+                        "date": day.get("datetime"),
+                        "temp_max": day.get("tempmax"),
+                        "temp_min": day.get("tempmin"),
+                        "conditions": day.get("description"),
+                    }
+                )
+
             formatted_response = {
                 "location": weather_data.get("resolvedAddress"),
                 "date": current_day.get("datetime"),
                 "temp_max": current_day.get("tempmax"),
                 "temp_min": current_day.get("tempmin"),
                 "conditions": current_day.get("description"),
+                "forecast": forecast_list,  # Add the forecast list here
                 "source": "api_fresh",  # to see it's a fresh copy
             }
 
