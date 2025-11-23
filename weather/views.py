@@ -9,6 +9,11 @@ import urllib.error
 import json
 
 
+# Create your views here.
+def home_view(request):
+    return render(request, "home.html")
+
+
 @ratelimit(key="ip", rate="5/m", block=False)
 def weather_api(request, city):
     if getattr(request, "limited", False):

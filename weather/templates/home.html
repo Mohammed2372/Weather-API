@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyCast - Weather API</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Custom Scrollbar for forecast list */
+        .forecast-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .forecast-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .forecast-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center p-4">
+
+    <!-- Main Container -->
+    <div class="glass w-full max-w-md rounded-2xl p-8 shadow-2xl relative overflow-hidden transition-all duration-300"
+        id="main-container">
+
+        <div
+            class="absolute top-0 left-0 w-32 h-32 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 -translate-x-1/2 -translate-y-1/2">
+        </div>
+        <div
+            class="absolute bottom-0 right-0 w-32 h-32 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 translate-x-1/2 translate-y-1/2">
+        </div>
+
+        <!-- SEARCH VIEW -->
+        <div id="search-view" class="fade-in">
+            <div class="text-center mb-8">
+                <i class="fas fa-cloud-sun-rain text-6xl text-blue-400 mb-4 drop-shadow-lg"></i>
+                <h1 class="text-3xl font-bold mb-2 tracking-wide">SkyCast</h1>
+                <p class="text-gray-400 text-sm">Real-time Global Weather</p>
+            </div>
+
+            <form id="search-form" class="space-y-4">
+                <div class="relative group">
+                    <i
+                        class="fas fa-search absolute left-4 top-3.5 text-gray-400 group-focus-within:text-blue-400 transition-colors"></i>
+                    <input type="text" id="city-input"
+                        class="w-full bg-slate-800/50 border border-slate-600 rounded-xl py-3 pl-12 pr-4 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-inner"
+                        placeholder="Enter country or city..." required>
+                </div>
+                <button type="submit"
+                    class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold py-3 rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-blue-600/30">
+                    Get Weather
+                </button>
+            </form>
+        </div>
+
+        <!-- WEATHER DETAILS VIEW -->
+        <div id="weather-view" class="hidden fade-in max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between mb-6 shrink-0">
+                <button onclick="goBack()"
+                    class="text-sm text-gray-400 hover:text-white flex items-center transition-colors group">
+                    <div class="bg-slate-800/50 p-2 rounded-full mr-2 group-hover:bg-slate-700 transition-colors">
+                        <i class="fas fa-arrow-left text-xs"></i>
+                    </div>
+                    Back
+                </button>
+
+                <button onclick="refreshData()" title="Click to refresh data"
+                    class="bg-blue-500/20 px-3 py-1 rounded-full border border-blue-500/30 hover:bg-blue-500/40 transition-colors cursor-pointer flex items-center gap-2 group/live">
+                    <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(96,165,250,0.8)]">
+                    </div>
+                    <span class="text-xs text-blue-300 font-medium">Live</span>
+                    <i
+                        class="fas fa-sync-alt text-[10px] text-blue-300 opacity-0 -ml-1 group-hover/live:opacity-100 group-hover/live:ml-0 transition-all duration-300"></i>
+                </button>
+            </div>
+
+            <div id="loader" class="hidden flex-col items-center justify-center py-10">
+                <div class="loader mb-4"></div>
+                <p class="text-gray-400 animate-pulse">Scanning satellites...</p>
+            </div>
+
+            <!-- DYNAMIC ERROR MESSAGE -->
+            <div id="error-message" class="hidden text-center py-8">
+                <div class="bg-red-500/10 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                    <i id="error-icon" class="fas fa-wifi text-2xl text-red-400"></i>
+                </div>
+                <p class="text-red-300 font-medium" id="error-text">Connection failed</p>
+                <p class="text-gray-400 text-xs mt-2" id="error-subtext">Please check your connection</p>
+                <button onclick="refreshData()"
+                    class="mt-4 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-white transition-colors">Try
+                    Again</button>
+            </div>
+
+            <div id="weather-content" class="hidden overflow-y-auto forecast-scroll pr-1">
+                <div class="text-center mb-8">
+                    <h2 id="w-location"
+                        class="text-4xl font-bold capitalize bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                    </h2>
+                    <p id="w-date" class="text-blue-300 text-sm mt-1 font-medium tracking-wide"></p>
+                </div>
+
+                <!-- Current Weather Card -->
+                <div
+                    class="bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-2xl p-6 mb-6 text-center border border-slate-700 shadow-xl relative overflow-hidden">
+                    <div class="flex justify-center items-center space-x-4 mb-2">
+                        <i class="fas fa-temperature-high text-5xl text-yellow-400 drop-shadow-md"></i>
+                    </div>
+                    <p id="w-conditions" class="text-xl font-medium text-gray-100"></p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-8">
+                    <div class="bg-slate-800/40 rounded-xl p-4 border border-slate-700/50 flex flex-col items-center">
+                        <div class="flex items-center text-red-400 mb-1">
+                            <i class="fas fa-long-arrow-alt-up mr-1"></i>
+                            <span class="text-xs font-bold uppercase tracking-wider">High</span>
+                        </div>
+                        <p id="w-max" class="text-3xl font-bold text-white">--</p>
+                    </div>
+
+                    <div class="bg-slate-800/40 rounded-xl p-4 border border-slate-700/50 flex flex-col items-center">
+                        <div class="flex items-center text-cyan-400 mb-1">
+                            <i class="fas fa-long-arrow-alt-down mr-1"></i>
+                            <span class="text-xs font-bold uppercase tracking-wider">Low</span>
+                        </div>
+                        <p id="w-min" class="text-3xl font-bold text-white">--</p>
+                    </div>
+                </div>
+
+                <!-- NEW: Forecast Section -->
+                <div class="border-t border-slate-700 pt-6">
+                    <h3 class="text-gray-400 text-sm font-semibold mb-4 uppercase tracking-wider">5-Day Forecast</h3>
+                    <div id="forecast-list" class="space-y-3">
+                        <!-- Forecast items will be injected here by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const API_BASE_URL = "http://127.0.0.1:8000";
+
+        const searchView = document.getElementById('search-view');
+        const weatherView = document.getElementById('weather-view');
+        const searchForm = document.getElementById('search-form');
+        const cityInput = document.getElementById('city-input');
+
+        const loader = document.getElementById('loader');
+        const weatherContent = document.getElementById('weather-content');
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        const errorSubtext = document.getElementById('error-subtext');
+        const errorIcon = document.getElementById('error-icon');
+        const forecastList = document.getElementById('forecast-list');
+
+        window.addEventListener('popstate', handleRoute);
+        window.addEventListener('DOMContentLoaded', handleRoute);
+
+        function handleRoute() {
+            const params = new URLSearchParams(window.location.search);
+            const cityParam = params.get('city');
+
+            if (cityParam) {
+                showWeatherView(decodeURIComponent(cityParam));
+            } else {
+                showSearchView();
+            }
+        }
+
+        function showSearchView() {
+            searchView.classList.remove('hidden');
+            weatherView.classList.add('hidden');
+            if (window.history.pushState) {
+                const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.pushState({ path: newUrl }, '', newUrl);
+            }
+        }
+
+        function showWeatherView(city) {
+            searchView.classList.add('hidden');
+            weatherView.classList.remove('hidden');
+            fetchWeatherData(city);
+        }
+
+        function goBack() {
+            const newUrl = window.location.pathname;
+            window.history.pushState({ path: newUrl }, '', newUrl);
+            showSearchView();
+            cityInput.value = '';
+            cityInput.focus();
+        }
+
+        function refreshData() {
+            const params = new URLSearchParams(window.location.search);
+            const city = params.get('city');
+            if (city) {
+                fetchWeatherData(decodeURIComponent(city));
+            } else {
+                goBack();
+            }
+        }
+
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const city = cityInput.value.trim();
+            if (city) {
+                const newUrl = `?city=${encodeURIComponent(city)}`;
+                window.history.pushState({ city: city }, '', newUrl);
+                showWeatherView(city);
+            }
+        });
+
+        async function fetchWeatherData(city) {
+            loader.classList.remove('hidden');
+            loader.classList.add('flex');
+            weatherContent.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+            forecastList.innerHTML = ''; // Clear previous forecast
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/weather/${city}/`);
+
+                if (response.status === 429) {
+                    showError('Limit Exceeded', 'Too many requests. Please wait.', 'fa-hourglass-half');
+                    return;
+                }
+                if (response.status === 404) {
+                    showError('City Not Found', `No weather data for "${city}".`, 'fa-search-location');
+                    return;
+                }
+                if (response.status === 500) {
+                    showError('Server Error', 'Trouble connecting to services (Redis).', 'fa-server');
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`Server Error (${response.status})`);
+                }
+
+                const data = await response.json();
+                renderData(data);
+
+            } catch (error) {
+                console.error(error);
+                if (window.location.protocol === 'file:') {
+                    console.log("Using Mock Data");
+                    setTimeout(() => {
+                        // Create mock data with a forecast array
+                        const today = new Date();
+                        const mockData = {
+                            "location": city,
+                            "date": today.toISOString(),
+                            "temp_max": 34.0,
+                            "temp_min": 17.6,
+                            "conditions": "Partly cloudy",
+                            "forecast": []
+                        };
+
+                        // Generate 5 days of fake forecast
+                        for (let i = 1; i <= 5; i++) {
+                            const nextDay = new Date(today);
+                            nextDay.setDate(today.getDate() + i);
+                            mockData.forecast.push({
+                                date: nextDay.toISOString(),
+                                temp_max: 34 - i,
+                                temp_min: 17 - i,
+                                conditions: i % 2 === 0 ? "Sunny" : "Rainy"
+                            });
+                        }
+
+                        renderData(mockData);
+                    }, 800);
+                } else {
+                    const isNetworkError = error.message.includes('Network') || error.message.includes('Failed to fetch');
+                    showError(
+                        isNetworkError ? 'Connection Failed' : 'Error Occurred',
+                        isNetworkError ? 'Check your internet connection.' : error.message,
+                        isNetworkError ? 'fa-wifi' : 'fa-exclamation-circle'
+                    );
+                }
+            }
+        }
+
+        function showError(title, message, iconClass) {
+            loader.classList.remove('flex');
+            loader.classList.add('hidden');
+            errorMessage.classList.remove('hidden');
+            errorText.textContent = title;
+            errorSubtext.textContent = message;
+            errorIcon.className = `fas ${iconClass} text-2xl text-red-400`;
+        }
+
+        function renderData(data) {
+            loader.classList.remove('flex');
+            loader.classList.add('hidden');
+            weatherContent.classList.remove('hidden');
+            weatherContent.classList.add('fade-in');
+
+            // 1. Render Current Weather
+            document.getElementById('w-location').textContent = data.location;
+            document.getElementById('w-date').textContent = formatDate(data.date);
+            document.getElementById('w-conditions').textContent = data.conditions;
+            document.getElementById('w-max').textContent = `${Math.round(data.temp_max)}°C`;
+            document.getElementById('w-min').textContent = `${Math.round(data.temp_min)}°C`;
+
+            // 2. Render Forecast (if available)
+            forecastList.innerHTML = '';
+
+            if (data.forecast && data.forecast.length > 0) {
+                data.forecast.forEach(day => {
+                    const dayName = new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' });
+                    // Simple icon logic for demo
+                    let icon = 'fa-cloud';
+                    if (day.conditions.toLowerCase().includes('sun')) icon = 'fa-sun text-yellow-400';
+                    else if (day.conditions.toLowerCase().includes('rain')) icon = 'fa-cloud-rain text-blue-400';
+                    else if (day.conditions.toLowerCase().includes('cloud')) icon = 'fa-cloud text-gray-400';
+
+                    const itemHtml = `
+                        <div class="flex items-center justify-between bg-slate-800/30 p-3 rounded-xl border border-slate-700/30 hover:bg-slate-800/50 transition-colors">
+                            <span class="w-12 font-medium text-gray-300">${dayName}</span>
+                            <div class="flex items-center space-x-2 w-1/3 justify-center">
+                                <i class="fas ${icon}"></i>
+                                <span class="text-xs text-gray-400 truncate max-w-[80px]">${day.conditions}</span>
+                            </div>
+                            <div class="flex items-center space-x-3 w-1/3 justify-end">
+                                <span class="font-bold text-white">${Math.round(day.temp_max)}°</span>
+                                <span class="text-sm text-gray-500">${Math.round(day.temp_min)}°</span>
+                            </div>
+                        </div>
+                    `;
+                    forecastList.innerHTML += itemHtml;
+                });
+            } else {
+                forecastList.innerHTML = '<p class="text-center text-gray-500 text-sm py-4">Forecast data unavailable</p>';
+            }
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            if (isNaN(date)) return dateStr;
+            return date.toLocaleDateString('en-US', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+        }
+    </script>
+</body>
+</html>
