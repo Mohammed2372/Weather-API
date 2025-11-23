@@ -1,0 +1,22 @@
+# Ignore Git files
+.git
+.gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+
+# Virtual environments
+env/
+.env
+
+# SQLite database
+db.sqlite3
+
+# Docker files themselves
+Dockerfile
+.dockerignore

@@ -9,7 +9,7 @@ __pycache__/
 
 # Local databases
 #*.sqlite3
-#db.sqlite3
+db.sqlite3
 
 # Django media and static files
 staticfiles/
