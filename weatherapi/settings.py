@@ -29,7 +29,7 @@ VISUAL_WEATHER_API_KEY = os.environ.get("VISUAL_CROSSING_API_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["0.0.0.0", "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
