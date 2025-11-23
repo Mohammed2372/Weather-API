@@ -4,7 +4,11 @@ This project is a simple, robust weather API built with Django. It acts as a pro
 
 This project serves as a practical example of how to integrate 3rd-party services, manage secure environment variables, implement caching, and secure an API in a Django application.
 
-Project idea from: [roadmap.sh/projects/weather-api-wrapper-service](https://roadmap.sh/projects/weather-api-wrapper-service)
+Project idea from:
+[roadmap.sh/projects/weather-api-wrapper-service](https://roadmap.sh/projects/weather-api-wrapper-service)
+
+Live Demo:
+🌐[weather-api-production-d03d.up.railway.app](https://weather-api-production-d03d.up.railway.app/)
 
 ## 🚀 Features
 
@@ -115,10 +119,13 @@ The API returns a clean JSON object with only the essential data.
 }
 ```
 
-## Home Page Frontend
+## 🖥️ Frontend Home Page
 
-This project includes a simple home page frontend that allows you to enter a country (or city) and view the weather for today plus the next 5 days.
+A simple frontend page is included for quick testing.
 
-- **Where:** The template is `weather/templates/home.html` (served at the project root/home URL).
-- **What it does:** Accepts a country/city input and displays today's weather and a 5-day forecast using the same backend API.
-- **How to use:** Run the Django server with `python manage.py runserver` and open `http://127.0.0.1:8000/` in your browser. Enter a country or city and submit to see the current weather and upcoming 5-day forecast.
+- Template: weather/templates/home.html
+- URL: project root (/)
+- Features:
+  - Enter a city or country
+  - View today’s weather
+  - View a 5-day forecast
